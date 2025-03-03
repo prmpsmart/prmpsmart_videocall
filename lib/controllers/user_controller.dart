@@ -22,7 +22,6 @@ class UserController extends GetxController {
       if (newUser.username != user.username) {
         users.add(User.fromJson(item));
       }
-      // users.add(User.fromJson(item));
     }
     update();
   }

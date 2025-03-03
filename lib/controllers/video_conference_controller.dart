@@ -11,15 +11,32 @@ import '/models/user.dart';
 class VideoConferenceController extends GetxController {
   SocketService socketService = Get.find();
   UserController userController = Get.find();
+
   RTCVideoRenderer localRenderer = RTCVideoRenderer();
+
   RTCVideoRenderer remoteRenderer = RTCVideoRenderer();
+
   RTCPeerConnection? peerConnection;
+
   RTCPeerConnectionState connectionState =
       RTCPeerConnectionState.RTCPeerConnectionStateClosed;
+
   MediaStream? localStream;
   MediaStream? remoteStream;
+
   StreamStateCallback? onAddRemoteStream;
-  Map<String, dynamic> configuration = {};
+
+  Map<String, dynamic> configuration = {
+    'iceServers': [
+      {
+        'urls': [
+          'stun:stun1.l.google.com:19302',
+          'stun:stun2.l.google.com:19302',
+        ]
+      }
+    ]
+  };
+
   List<MediaDeviceInfo> mediaDevices = [];
 
   bool isMuted = false;
@@ -36,16 +53,6 @@ class VideoConferenceController extends GetxController {
 
     mediaDevices = await Helper.cameras;
 
-    configuration = {
-      'iceServers': [
-        {
-          'urls': [
-            'stun:stun1.l.google.com:19302',
-            'stun:stun2.l.google.com:19302',
-          ]
-        }
-      ]
-    };
     onAddRemoteStream = ((stream) {
       remoteRenderer.srcObject = stream;
       update();

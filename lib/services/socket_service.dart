@@ -15,13 +15,87 @@ class SocketService extends GetxController {
   Socket? socket;
   UserController userController = Get.find();
 
+  // Call a user
+  callSocketUser(Call call) {
+    socket!.emit('call-user', call.toJson());
+  }
+
+  _callMade(data) {
+    printInfo(info: 'SOCKETT CALL MADE $data');
+    Call call = Call.fromJson(data);
+    if (call.sdp != null) {
+      Get.dialog(
+        AnswerCallDialog(call: call),
+        // barrierDismissible: true,
+      );
+    }
+  }
+
+  // Answer call
+  makeAnswer(Call call) {
+    socket!.emit('make-answer', call.toJson());
+  }
+
+  _answerMade(data) {
+    printInfo(info: 'SOCKETT ANSWER MADE $data');
+    if (Get.isRegistered<VideoConferenceController>()) {
+      Get.find<VideoConferenceController>()
+          .handleAnswer(Call.fromJson(data).sdp!);
+    }
+  }
+
+  // Send Ice Candidate
+  sendIceCandidate(CandidateModel candidate) {
+    socket!.emit('ice-candidate', candidate.toJson());
+  }
+
+  _iceCandidate(data) {
+    printInfo(info: 'SOCKETT Ice candidate $data');
+    if (Get.isRegistered<VideoConferenceController>()) {
+      Get.find<VideoConferenceController>()
+          .handleNewIceCandidates(CandidateModel.fromJson(data));
+    }
+  }
+
+  // Close call
+  hangupCall(Call call) {
+    socket!.emit('hangup', call.toJson());
+  }
+
+  _hangup(data) {
+    printInfo(info: 'SOCKETT Hangup $data');
+    if (Get.isRegistered<VideoConferenceController>()) {
+      Get.find<VideoConferenceController>()
+          .hangUp(snackbarMessage: "User closed call");
+    }
+
+    if (Get.isDialogOpen!) {
+      Get.back();
+    }
+  }
+
+  // Get busy
+  busyCall(Call call) {
+    socket!.emit('busy', call.toJson());
+  }
+
+  _busy(data) {
+    printInfo(info: 'SOCKETT busy $data');
+    if (Get.isRegistered<VideoConferenceController>()) {
+      Get.find<VideoConferenceController>()
+          .hangUp(snackbarMessage: "User is busy");
+    }
+
+    if (Get.isDialogOpen!) {
+      Get.back();
+    }
+  }
+
   handleSocket(String host) {
     if (socket?.connected == true) {
       printInfo(info: 'Already connected');
       return;
     }
-
-    printInfo(info: 'Trying to connect');
 
     if (socket == null) {
       socket = io(
@@ -57,90 +131,25 @@ class SocketService extends GetxController {
       });
 
       // Handle Receive Call
-      socket!.on('call-made', (data) async {
-        printInfo(info: 'SOCKETT CALL MADE $data');
-        Call call = Call.fromJson(data);
-        if (call.sdp != null) {
-          Get.dialog(
-            AnswerCallDialog(call: call),
-            // barrierDismissible: true,
-          );
-        }
-      });
+      socket!.on('call-made', _callMade);
 
       // Handle Answer
-      socket!.on('answer-made', (data) async {
-        printInfo(info: 'SOCKETT ANSWER MADE $data');
-        if (Get.isRegistered<VideoConferenceController>()) {
-          Get.find<VideoConferenceController>()
-              .handleAnswer(Call.fromJson(data).sdp!);
-        }
-      });
+      socket!.on('answer-made', _answerMade);
 
       // Handle Ice Candidate
-      socket!.on('ice-candidate', (data) async {
-        printInfo(info: 'SOCKETT Ice candidate $data');
-        if (Get.isRegistered<VideoConferenceController>()) {
-          Get.find<VideoConferenceController>()
-              .handleNewIceCandidates(CandidateModel.fromJson(data));
-        }
-      });
+      socket!.on('ice-candidate', _iceCandidate);
 
       // Listen for hangup
-      socket!.on('hangup', (data) async {
-        printInfo(info: 'SOCKETT Hangup $data');
-        if (Get.isRegistered<VideoConferenceController>()) {
-          Get.find<VideoConferenceController>()
-              .hangUp(snackbarMessage: "User closed call");
-        }
-
-        if (Get.isDialogOpen!) {
-          Get.back();
-        }
-      });
+      socket!.on('hangup', _hangup);
 
       // Listen for busy
-      socket!.on('busy', (data) async {
-        printInfo(info: 'SOCKETT busy $data');
-        if (Get.isRegistered<VideoConferenceController>()) {
-          Get.find<VideoConferenceController>()
-              .hangUp(snackbarMessage: "User is busy");
-        }
+      socket!.on('busy', _busy);
 
-        if (Get.isDialogOpen!) {
-          Get.back();
-        }
-      });
+      //
     } else {
       socket!.emitWithAck('connectUser', userController.user.toJson());
-      print('emitted');
     }
 
     socket!.connect();
-  }
-
-  // Call a user
-  callSocketUser(Call call) {
-    socket!.emit('call-user', call.toJson());
-  }
-
-  // Answer call
-  makeAnswer(Call call) {
-    socket!.emit('make-answer', call.toJson());
-  }
-
-  // Send Ice Candidate
-  sendIceCandidate(CandidateModel candidate) {
-    socket!.emit('ice-candidate', candidate.toJson());
-  }
-
-  // Close call
-  hangupCall(Call call) {
-    socket!.emit('hangup', call.toJson());
-  }
-
-  // Get busy
-  busyCall(Call call) {
-    socket!.emit('busy', call.toJson());
   }
 }
